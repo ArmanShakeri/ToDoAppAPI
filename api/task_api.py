@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Depends, Response
+from typing import List
+
+from fastapi import APIRouter, Response
 from utils.logger import Logger
 from models.task import Task, UpdatedTask
+from models import responses
 import json
 from connections.redis_db import RedisDB
 
@@ -9,7 +12,7 @@ router = APIRouter()
 instance = RedisDB().redis_connection
 
 
-@router.get('/task')
+@router.get('/task', response_model=List[Task])
 def get_all_tasks():
     try:
         keys = instance.keys()
@@ -24,7 +27,7 @@ def get_all_tasks():
         return Response(status_code=500, content='{"detail": "Internal Server Error"}', media_type="application/json")
 
 
-@router.get('/tasks/{task_id}')
+@router.get('/tasks/{task_id}', response_model=responses.Response)
 def get_task(task_id: int):
     try:
         if not instance.exists(task_id):
@@ -39,8 +42,8 @@ def get_task(task_id: int):
         return Response(status_code=500, content='{"detail": "Internal Server Error"}', media_type="application/json")
 
 
-@router.post('/tasks')
-def create_task(task: Task = Depends()):
+@router.post('/tasks', response_model=responses.Response)
+def create_task(task: Task):
     try:
         if instance.exists(task.id):
             msg = {"detail": f"Task {task.id} already exists"}
@@ -48,13 +51,13 @@ def create_task(task: Task = Depends()):
         else:
             instance.set(task.id, task.model_dump_json())
             msg = {"detail": f"Task {task.id} successfully created"}
-            return Response(status_code=200, content=json.dumps(msg), media_type="application/json")
+            return Response(status_code=201, content=json.dumps(msg), media_type="application/json")
     except Exception as e:
         logger.error(e.__str__())
         return Response(status_code=500, content='{"detail": "Internal Server Error"}', media_type="application/json")
 
 
-@router.put('/tasks/{task_id}')
+@router.put('/tasks/{task_id}', response_model=responses.Response)
 def update_task(task_id: int, task: UpdatedTask):
     try:
         if not instance.exists(task_id):
@@ -75,7 +78,7 @@ def update_task(task_id: int, task: UpdatedTask):
         return Response(status_code=500, content='{"detail": "Internal Server Error"}', media_type="application/json")
 
 
-@router.delete('/tasks/{task_id}')
+@router.delete('/tasks/{task_id}', response_model=responses.Response)
 def delete_task(task_id: int):
     try:
         if not instance.exists(task_id):
