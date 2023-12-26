@@ -3,3 +3,4 @@ uvicorn
 pydantic
 redis
 jinja2
+aioredis
